@@ -150,7 +150,8 @@ def main(argv):
                                    start_date, end_date, dims).get('totalResults')
           print "Found " + str(limit) + " number of records" #VS
           #for pag_index in xrange(0, limit, 10000):  #Do 10K records for testing
-          for pag_index in xrange(0, 10000, 10000): #VS
+          #for pag_index in xrange(0, 10000, 10000): #VS
+          for pag_index in xrange(0, limit, 10000):  #Do 10K records for testing
             results = ga_query(service, profile_id, pag_index,
                                        start_date, end_date, dims)
             if results.get('containsSampledData'):
@@ -244,14 +245,6 @@ files = {}
 table_names = {}
 table_filenames = {}
 
-"""
-# Cannot specify both URI and other arguments
-#connect("gauser01", "GoogleAnalytics1@", "community-azure.mapd.com", "gauser01db")
-#connect_to_mapd("gauser01", "GoogleAnalytics1@", "mapd-azure-server", "gauser01db")
-#load_to_mapd("metalreaction_city", "./data/ga_metalreaction_city.csv")
-"""
-
-
 # Construct dictionary of GA website name and ids.
 traverse_hierarchy(sys.argv)
 
@@ -284,11 +277,13 @@ connect_to_mapd("gauser01", "GoogleAnalytics1@", "mapd-azure-server", "gauser01d
 for dim_i in xrange(0,len(all_dimensions), n_dims):
   dimss = key_dimensions + all_dimensions[dim_i:dim_i+n_dims]
   dims = ",".join(dimss)
+  field_name = '%s' % (all_dimensions[dim_i:dim_i+n_dims])
+  field_name = filter(str.isalnum, field_name)
   print ('Loading data to MapD from file %s ...' % (table_filenames[dims]))
   files[dims].close()
   fix_date_table(table_filenames[dims])
   drop_table_mapd(table_names[dims])
-  load_to_mapd(table_names[dims], table_filenames[dims])
+  load_to_mapd(table_names[dims], table_filenames[dims], field_name[2:])
 
 print "======================================================================="
 print "Goto MapD Immerse UI @ http://community-azure.mapd.com:9092/"
