@@ -65,12 +65,11 @@ from oauth2client.client import AccessTokenRefreshError
 
 class SampledDataError(Exception): pass
 
-#orig_key_dimensions=['ga:date','ga:hour','ga:minute','ga:networkLocation','ga:browserSize','ga:browserVersion']
-key_dimensions=['ga:date','ga:hour','ga:networkLocation','ga:city','ga:country', 'ga:landingPagePath']
-all_dimensions=['ga:language','ga:deviceCategory']
-#worked_all_dimensions=['ga:source','ga:mobileDeviceModel','ga:mobileDeviceBranding','ga:mobileDeviceInfo','ga:daysSinceLastSession','ga:sessionCount','ga:countryIsoCode','ga:javaEnabled','ga:sessionDurationBucket','ga:language','ga:screenColors','ga:operatingSystem','ga:deviceCategory','ga:browserSize','ga:flashVersion','ga:continent','ga:screenResolution','ga:browser','ga:city']
-#all_dimensions=['ga:language','ga:userAgeBracket','ga:userGender','ga:sessionDurationBucket',ga:keyword','ga:adGroup','ga:campaign','ga:adContent','ga:deviceCategory','ga:exitPagePath']
-#all_dimensions=['ga:userAgeBracket','ga:userGender','ga:country','ga:countryIsoCode','ga:city','ga:continent','ga:subContinent','ga:userType','ga:sessionCount','ga:daysSinceLastSession','ga:sessionDurationBucket','ga:referralPath','ga:browser','ga:operatingSystem','ga:browserSize','ga:screenResolution','ga:screenColors','ga:flashVersion','ga:javaEnabled','ga:networkLocation','ga:mobileDeviceInfo','ga:mobileDeviceModel','ga:mobileDeviceBranding','ga:deviceCategory','ga:language','ga:adGroup','ga:source','ga:dataSource','ga:sourceMedium','ga:adSlot','ga:mobileInputSelector','ga:mobileDeviceMarketingName','ga:searchCategory','ga:searchDestinationPage','ga:interestAffinityCategory','ga:landingPagePath','ga:exitPagePath','ga:browserVersion','ga:eventLabel','ga:eventAction','ga:eventCategory','ga:hour','ga:yearMonth','ga:Month','ga:date','ga:keyword','ga:campaign','ga:adContent']
+# original set - key_dimensions=['ga:date','ga:hour','ga:minute','ga:networkLocation','ga:browserSize','ga:browserVersion']
+#original set - all_dimensions=['ga:userAgeBracket','ga:userGender','ga:country','ga:countryIsoCode','ga:city','ga:continent','ga:subContinent','ga:userType','ga:sessionCount','ga:daysSinceLastSession','ga:sessionDurationBucket','ga:referralPath','ga:browser','ga:operatingSystem','ga:browserSize','ga:screenResolution','ga:screenColors','ga:flashVersion','ga:javaEnabled','ga:networkLocation','ga:mobileDeviceInfo','ga:mobileDeviceModel','ga:mobileDeviceBranding','ga:deviceCategory','ga:language','ga:adGroup','ga:source','ga:dataSource','ga:sourceMedium','ga:adSlot','ga:mobileInputSelector','ga:mobileDeviceMarketingName','ga:searchCategory','ga:searchDestinationPage','ga:interestAffinityCategory','ga:landingPagePath','ga:exitPagePath','ga:browserVersion','ga:eventLabel','ga:eventAction','ga:eventCategory','ga:hour','ga:yearMonth','ga:Month','ga:date','ga:keyword','ga:campaign','ga:adContent']
+
+key_dimensions=['ga:date','ga:hour','ga:networkLocation','ga:longitude','ga:latitude','ga:landingPagePath']
+all_dimensions=['ga:source','ga:mobileDeviceModel','ga:mobileDeviceBranding','ga:mobileDeviceInfo','ga:daysSinceLastSession','ga:sessionCount','ga:countryIsoCode','ga:javaEnabled','ga:sessionDurationBucket','ga:language','ga:screenColors','ga:operatingSystem','ga:deviceCategory','ga:browserSize','ga:flashVersion','ga:continent','ga:screenResolution','ga:browser', 'ga:adGroup', 'ga:adContent', 'ga:adSlot', 'ga:keyword','ga:campaign', 'ga:city', 'ga:country']
 n_dims = 7 - len(key_dimensions)
 
 # Traverse the GA management hierarchy and construct the mapping of website 

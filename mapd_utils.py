@@ -46,7 +46,7 @@ def load_to_mapd(table_name, csv_file, field_name):
   #connection.create_table(table_name, csv_df, preserve_index=False)
   #connection.load_table(table_name, csv_df, preserve_index=False)
   print "loading ..."
-  create_table_str = 'CREATE TABLE %s (ga_date DATE, ga_time TIME, ga_networkLocation TEXT ENCODING DICT(8), ga_city TEXT ENCODING DICT(8), ga_country TEXT ENCODING DICT(8), ga_landingPagePath TEXT ENCODING DICT(8), ga_%s TEXT ENCODING DICT(8), ga_pageviews BIGINT)' % (table_name, field_name)
+  create_table_str = 'CREATE TABLE %s (ga_date DATE, ga_time TIME, ga_networkLocation TEXT ENCODING DICT(8), ga_longitude REAL, ga_latitude REAL, ga_landingPagePath TEXT ENCODING DICT(8), ga_%s TEXT ENCODING DICT(8), ga_pageviews BIGINT)' % (table_name, field_name)
   print create_table_str
   connection.execute(create_table_str)
   copy_file_for_upload(csv_file)
