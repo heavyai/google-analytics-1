@@ -29,29 +29,19 @@ def drop_table_mapd(table_name):
   print command
   connection.execute(command)
 
-def fix_date_table(csv_file):
-  command = './fixdate.sh %s' % (csv_file)
-  print command
-  os.system(command)
-
-def copy_file_for_upload(csv_file):
-  command = './copy_file_for_upload.sh %s' % (csv_file)
-  print command
-  os.system(command)
-
-# Load CSV to DB
-def load_to_mapd(table_name, csv_file, field_name):
+# Load CSV to Table
+def load_to_mapd(table_name, csv_file, mapd_host, mapd_user):
   global connection
-  #csv_df = pd.read_csv(csv_file)
-  #connection.create_table(table_name, csv_df, preserve_index=False)
-  #connection.load_table(table_name, csv_df, preserve_index=False)
-  print "loading ..."
-  create_table_str = 'CREATE TABLE %s (ga_date DATE, ga_time TIME, ga_networkLocation TEXT ENCODING DICT(8), ga_longitude REAL, ga_latitude REAL, ga_landingPagePath TEXT ENCODING DICT(8), ga_%s TEXT ENCODING DICT(8), ga_pageviews BIGINT)' % (table_name, field_name)
+  create_table_str = 'CREATE TABLE %s (ga_date TIMESTAMP, ga_longitude FLOAT, ga_latitude FLOAT, ga_landingPagePath TEXT ENCODING DICT(8), ga_networkLocation TEXT ENCODING DICT(8), ga_pageviews BIGINT, ga_country TEXT ENCODING DICT(8), ga_city TEXT ENCODING DICT(8), ga_source TEXT ENCODING DICT(8), ga_sessionDurationBucket BIGINT, ga_sessionCount BIGINT, ga_deviceCategory TEXT ENCODING DICT(8), ga_campaign TEXT ENCODING DICT(8), ga_adContent TEXT ENCODING DICT(8), ga_keyword TEXT ENCODING DICT(8))' % (table_name)
   print create_table_str
   connection.execute(create_table_str)
-  copy_file_for_upload(csv_file)
-  query = 'COPY %s from \'/tmp/foobar_gauser.csv\' WITH (nulls = \'NA\')' % (table_name)
+  server_csv_file = '/tmp/%s' % (os.path.basename(csv_file))
+  command = 'scp %s %s@%s:%s' % (csv_file, mapd_user, mapd_host, server_csv_file)
+  print command
+  os.system(command)
+
+  query = 'COPY %s from \'%s\' WITH (nulls = \'None\')' % (table_name, server_csv_file)
   print query
   connection.execute(query)
-  connection.get_table_details(table_name)
+  print connection.get_table_details(table_name)
 

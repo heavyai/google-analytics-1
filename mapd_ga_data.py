@@ -56,29 +56,59 @@ import csv
 import string
 import os
 import re
+import pandas as pd
+import numpy as np
 # MAPD Modules
 from mapd_utils import *
 
 from apiclient.errors import HttpError
-from apiclient import sample_tools
-from oauth2client.client import AccessTokenRefreshError
+from apiclient.discovery import build
+from oauth2client.service_account import ServiceAccountCredentials
+
+import httplib2
+from oauth2client import client
+from oauth2client import file
+from oauth2client import tools
 
 class SampledDataError(Exception): pass
 
 # original set - key_dimensions=['ga:date','ga:hour','ga:minute','ga:networkLocation','ga:browserSize','ga:browserVersion']
 #original set - all_dimensions=['ga:userAgeBracket','ga:userGender','ga:country','ga:countryIsoCode','ga:city','ga:continent','ga:subContinent','ga:userType','ga:sessionCount','ga:daysSinceLastSession','ga:sessionDurationBucket','ga:referralPath','ga:browser','ga:operatingSystem','ga:browserSize','ga:screenResolution','ga:screenColors','ga:flashVersion','ga:javaEnabled','ga:networkLocation','ga:mobileDeviceInfo','ga:mobileDeviceModel','ga:mobileDeviceBranding','ga:deviceCategory','ga:language','ga:adGroup','ga:source','ga:dataSource','ga:sourceMedium','ga:adSlot','ga:mobileInputSelector','ga:mobileDeviceMarketingName','ga:searchCategory','ga:searchDestinationPage','ga:interestAffinityCategory','ga:landingPagePath','ga:exitPagePath','ga:browserVersion','ga:eventLabel','ga:eventAction','ga:eventCategory','ga:hour','ga:yearMonth','ga:Month','ga:date','ga:keyword','ga:campaign','ga:adContent']
 
-key_dimensions=['ga:date','ga:hour','ga:networkLocation','ga:longitude','ga:latitude','ga:landingPagePath']
-all_dimensions=['ga:source','ga:mobileDeviceModel','ga:mobileDeviceBranding','ga:mobileDeviceInfo','ga:daysSinceLastSession','ga:sessionCount','ga:countryIsoCode','ga:javaEnabled','ga:sessionDurationBucket','ga:language','ga:screenColors','ga:operatingSystem','ga:deviceCategory','ga:browserSize','ga:flashVersion','ga:continent','ga:screenResolution','ga:browser', 'ga:adGroup', 'ga:adContent', 'ga:adSlot', 'ga:keyword','ga:campaign', 'ga:city', 'ga:country']
+key_dimensions=['ga:date','ga:hour','ga:minute','ga:longitude','ga:latitude','ga:landingPagePath']
+all_dimensions=['ga:networkLocation', 'ga:country', 'ga:city', 'ga:source', 'ga:sessionDurationBucket', 'ga:sessionCount', 'ga:deviceCategory', 'ga:campaign', 'ga:adContent','ga:keyword']
 n_dims = 7 - len(key_dimensions)
+
+def get_service():
+  """Get a service that communicates to a Google API.
+
+  Args:
+    api_name: The name of the api to connect to.
+    api_version: The api version to connect to.
+    scope: A list auth scopes to authorize for the application.
+    key_file_location: The path to a valid service account JSON key file.
+
+  Returns:
+    A service that is connected to the specified API.
+  """
+  scope = ['https://www.googleapis.com/auth/analytics.readonly']
+  key_file_location = './client_secrets.json'
+  api_name = 'analytics'
+  api_version = 'v3'
+  credentials = ServiceAccountCredentials.from_json_keyfile_name(
+      key_file_location, scopes=scope)
+
+  # Build the service object.
+  service = build(api_name, api_version, credentials=credentials)
+
+  return service
+
 
 # Traverse the GA management hierarchy and construct the mapping of website 
 # profile views and IDs.
 def traverse_hierarchy(argv):
   # Authenticate and construct service.
-  service, flags = sample_tools.init(
-      argv, 'analytics', 'v3', __doc__, __file__,
-      scope='https://www.googleapis.com/auth/analytics.readonly')
+  service = get_service()
 
   try:
     accounts = service.management().accounts().list().execute()
@@ -93,9 +123,7 @@ def traverse_hierarchy(argv):
             webPropertyId=firstWebpropertyId).execute()
         for profile in profiles.get('items', []):
           profileID = "%s" % (profile.get('id'))
-          profileName = "%s" % (profile.get('name'))
-          profileName = profileName.strip()
-          profileName = profileName.replace(' ','')
+          profileName = "%s_%s" % (webproperty.get('name'),profile.get('name'))
           profile_ids[profileName] = profileID
 
   except TypeError as error:
@@ -111,7 +139,53 @@ def traverse_hierarchy(argv):
     print ('The credentials have been revoked or expired, please re-run'
            'the application to re-authorize')
 
+def merge_tables():
+  global final_csv_file
+  for i in xrange(0,len(csv_list),1):
+    print csv_list[i]
+    if i == (len(csv_list) - 1):
+      print "exiting for loop ..."
+      break
+  
+    if i == 0:
+      df1 = pd.read_csv(csv_list[0])
+      df2 = pd.read_csv(csv_list[1])
+    else:
+      df1 = pd.read_csv('./data/combo.csv')
+      os.system("rm -f ./data/combo.csv")
+      df2 = pd.read_csv(csv_list[i+1])
+  
+    df1 = df1.dropna(subset = ['ga_longitude', 'ga_latitude'])
+    df2 = df2.dropna(subset = ['ga_longitude', 'ga_latitude'])
+    combo = pd.merge(df1, df2, how='left')
+    df = pd.DataFrame(combo)
+    df = df[df.ga_pageviews != 0]
+    df = df[df.ga_longitude != 0]
+    df = df[df.ga_latitude != 0]
+    df['ga_pageviews'] = df['ga_pageviews'].fillna(0)
+    df.to_csv('./data/combo.csv', index=False)
+    os.system("sed -i '1,$s/,$/,None/' ./data/combo.csv")
+    os.system("sed -i '1,$s/,,/,None,/g' ./data/combo.csv")
+    del df1
+    del df2
+    del combo
+  
+  df = pd.read_csv('./data/combo.csv')
+  #df = pd.DataFrame(df1)
+  df.ga_date = df.ga_date.apply(str)
+  df.ga_hour = df.ga_hour.apply(str)
+  df.ga_minute = df.ga_minute.apply(str)
+  df['ga_date'] = df['ga_date'].str.replace(r'(\d\d\d\d)(\d\d)(\d\d)', r'\2/\3/\1')
+  df['ga_date'] = df['ga_date'].astype(str) +" " + df['ga_hour'].astype(str) +":" +df['ga_minute'].astype(str) +":00"
+  df = df.drop('ga_hour', axis=1)
+  df = df.drop('ga_minute', axis=1)
+  df.to_csv(final_csv_file, index=False)  
+  print df.head(3)
+  print df.isnull().sum()
+  
 def main(argv):
+  global csv_list
+  i = 0
   for dim_i in xrange(0,len(all_dimensions), n_dims):
     dimss = key_dimensions + all_dimensions[dim_i:dim_i+n_dims]
     dims = ",".join(dimss)
@@ -123,16 +197,17 @@ def main(argv):
     file_suffix = '%s' % (file_suffix.strip('\[\'\]'))
     file_suffix = '%s' % (file_suffix[3:])
     filename = '%s_%s.csv' % (profile.lower(), file_suffix)
+    filename = filename.strip()
     table_names[dims] = '%s_%s' % (profile.lower(), file_suffix)
-    table_filenames[dims] = path + '%s_%s.csv' % (profile.lower(), file_suffix)
-#RM filename = 'ga_%s_%s.csv' % (profile.lower(), dims)
+    #table_filenames[dims] = path + '%s_%s.csv' % (profile.lower(), file_suffix)
+    table_filenames[dims] = path + filename
+    csv_list = csv_list + [table_filenames[dims]]
+    i += 1
     files[dims] = open(path + filename, 'wt')
     writers[dims] = csv.writer(files[dims], lineterminator='\n')
 
   # Authenticate and construct service.
-  service, flags = sample_tools.init(
-      argv, 'analytics', 'v3', __doc__, __file__,
-      scope='https://www.googleapis.com/auth/analytics.readonly')
+  service = get_service()  
 
   # Try to make a request to the API. Print the results or handle errors.
   try:
@@ -148,14 +223,12 @@ def main(argv):
           limit = ga_query(service, profile_id, 0,
                                    start_date, end_date, dims).get('totalResults')
           print "Found " + str(limit) + " number of records" #VS
-          #for pag_index in xrange(0, limit, 10000):  #Do 10K records for testing
-          #for pag_index in xrange(0, 10000, 10000): #VS
-          for pag_index in xrange(0, limit, 10000):  #Do 10K records for testing
+          for pag_index in xrange(0, limit, 10000):
             results = ga_query(service, profile_id, pag_index,
                                        start_date, end_date, dims)
             if results.get('containsSampledData'):
               raise SampledDataError #VS
-            print_results(results, pag_index, start_date, end_date, dims)
+            save_results(results, pag_index, start_date, end_date, dims)
 
   except TypeError, error:
     # Handle errors in constructing a query.
@@ -190,7 +263,7 @@ def ga_query(service, profile_id, pag_index, start_date, end_date, dims):
       max_results=str(pag_index+10000)).execute()
 
 
-def print_results(results, pag_index, start_date, end_date, dims):
+def save_results(results, pag_index, start_date, end_date, dims):
   """Prints out the results.
 
   This prints out the profile name, the column headers, and all the rows of
@@ -236,13 +309,16 @@ def print_results(results, pag_index, start_date, end_date, dims):
 
 profile_ids = {}
 
-date_ranges = [('2010-01-01',
-               '2018-01-31')]
+#date_ranges = [('2017-08-27',
+#               '2018-02-22')]
+date_ranges = [('1daysAgo',
+               'today')]
 
 writers = {}
 files = {}
 table_names = {}
 table_filenames = {}
+csv_list = []
 
 # Construct dictionary of GA website name and ids.
 traverse_hierarchy(sys.argv)
@@ -250,41 +326,68 @@ traverse_hierarchy(sys.argv)
 # Select the GA profile view to extract data
 selection_list = [0]
 i = 1
-print ("Item#  ProfileName  ProfileID")
+print ('%5s %20s %5s %20s' % ("Item#", "Profile ID", " ", "Profile Name"))
 for profile in sorted(profile_ids):
   selection_list = selection_list + [profile_ids[profile]]
-  print ('%s) %s %s' % (i, profile, profile_ids[profile]))
+  print ('%4s %20s %5s %20s' % (i, profile_ids[profile], " ", profile))
   i +=1
 
-print('Enter the item# of the profile you would like to upload: ')
+print 'Enter the item# of the profile you would like to upload: ',
 item = int(raw_input())
 if item == '' or item <= 0 or item >= len(selection_list):
   print('Invalid selection - %s' % item)
   sys.exit(0)
-print('item # %s selected' % item)
+print('Item # %s selected' % item)
+
+print('\nEnter the begin date and end date in the following format: YYYY-MM-DD YYYY-MM-DD')
+print('Or hit enter to proceed with the default which is last 30 days data')
+print 'Date Range: ',
+begin_end_date = raw_input()
+if begin_end_date == '':
+  print('Extract data from today to 30 days ago')
+else:
+  (begin_date, end_date) = [t(s) for t,s in zip((str, str), begin_end_date.split())]
+  print('Extract data from %s to %s' % (begin_date, end_date))
+  date_ranges = [(begin_date, end_date)]
+
+print("\nEnter the MapD server information if you want to upload data,\n otherwise simply hit enter to use the manual procedure to upload the data")
+print("  Information needed - <Hostname or IP Address> <db login> <db password> <database name> <SSH login>")
+print 'MapD Server Info: ',
+server_info = raw_input()
+if server_info == '':
+  print('Use MapD Immerse import user interface to load the output CSV file')
+  skip_mapd_connect = True
+else:
+  (mapd_host, db_login, db_password, database, ssh_login) = [t(s) for t,s in zip((str, str, str, str, str), server_info.split())]
+  print('The output CSV file will be automatically uploaded to %s server into %s database' % (mapd_host, database))
+  skip_mapd_connect = False
+print ""
+
 for profile in sorted(profile_ids):
   if (selection_list[item] == profile_ids[profile]):
-    print ('going to load %s(%s) ...' % (profile, profile_ids[profile]))
+    print ('\nGoing to download data for %s(%s) ...' % (profile, profile_ids[profile]))
+    table_name = profile.lower()
+    table_name = '%s' % (table_name.replace(' ', ''))    
+    final_csv_file = './data/%s.csv' % (table_name)    
     main(sys.argv)
-print "Profile done. Load to MapD ..."
+    # Merge the tables for the different dimensions.
+    merge_tables()
+print "Download of analytics data done."
 
 # Connect to MapD
-connect_to_mapd("gauser01", "GoogleAnalytics1@", "mapd-azure-server", "gauser01db")
-#VS: Error handling
+if skip_mapd_connect == True:
+  print "======================================================================="
+  print 'Goto MapD Immerse UI and import the CSV file %s' % (final_csv_file)
+  print "======================================================================="
+  sys.exit(0)
+connect_to_mapd(db_login, db_password, mapd_host, database)
 
-# Load to MapD
-for dim_i in xrange(0,len(all_dimensions), n_dims):
-  dimss = key_dimensions + all_dimensions[dim_i:dim_i+n_dims]
-  dims = ",".join(dimss)
-  field_name = '%s' % (all_dimensions[dim_i:dim_i+n_dims])
-  field_name = filter(str.isalnum, field_name)
-  print ('Loading data to MapD from file %s ...' % (table_filenames[dims]))
-  files[dims].close()
-  fix_date_table(table_filenames[dims])
-  drop_table_mapd(table_names[dims])
-  load_to_mapd(table_names[dims], table_filenames[dims], field_name[2:])
+# Drop previous table
+drop_table_mapd(table_name)
 
+# Load data into MapD table
+load_to_mapd(table_name, final_csv_file, mapd_host, ssh_login)
 print "======================================================================="
-print "Goto MapD Immerse UI @ http://community-azure.mapd.com:9092/"
+print 'Goto MapD Immerse UI @ http://%s:9092/' % (mapd_host)
 print "======================================================================="
 
