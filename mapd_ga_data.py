@@ -262,17 +262,8 @@ def ga_query(service, profile_id, pag_index, start_date, end_date, dims):
       start_index=str(pag_index+1),
       max_results=str(pag_index+10000)).execute()
 
-
+# Write results reported from the Core Reporting API to the CSV file
 def save_results(results, pag_index, start_date, end_date, dims):
-  """Prints out the results.
-
-  This prints out the profile name, the column headers, and all the rows of
-  data.
-
-  Args:
-    results: The response returned from the Core Reporting API.
-  """
-
   # New write header
   if pag_index == 0:
     if (start_date, end_date) == date_ranges[0]:
