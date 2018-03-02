@@ -162,7 +162,7 @@ def merge_tables():
     df = df[df.ga_pageviews != 0]
     df = df[df.ga_longitude != 0]
     df = df[df.ga_latitude != 0]
-    df['ga_pageviews'] = df['ga_pageviews'].fillna(0)
+    #df['ga_pageviews'] = df['ga_pageviews'].fillna(0)
     df.to_csv('./data/combo.csv', index=False)
     os.system("sed -i '1,$s/,$/,None/' ./data/combo.csv")
     os.system("sed -i '1,$s/,,/,None,/g' ./data/combo.csv")
@@ -302,7 +302,7 @@ profile_ids = {}
 
 #date_ranges = [('2017-08-27',
 #               '2018-02-22')]
-date_ranges = [('1daysAgo',
+date_ranges = [('30daysAgo',
                'today')]
 
 writers = {}
