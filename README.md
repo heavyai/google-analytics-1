@@ -1,7 +1,10 @@
 # google-analytics
 An easy-peasy method to import Google Analytics data into MapD and make it actionable.
 
-Extract Google Analytics data given the account OAuth credentials and profile id.
-The extracted data in CSV format is then loaded into MapD using pymapd - a pythonic interface to MapD's SQL engine.
-Create sample dashboard(s) with some relevant charts.
+Download the different metrics from Google Analytics account in CSV format and upload the data into MapD Core database. You can then use MapD Immerse platform to explore the GA metrics visually.
+
+Usage:
+Git clone
+Copy the client_secrets.json corresponding to the Google Analytics Service Account to this directiory
+$ python mapd_ga_data.py
 
