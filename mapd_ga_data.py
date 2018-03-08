@@ -222,7 +222,7 @@ def main(argv):
           print dims
           limit = ga_query(service, profile_id, 0,
                                    start_date, end_date, dims).get('totalResults')
-          print "Found " + str(limit) + " number of records" #VS
+          print "Found " + str(limit) + " records" #VS
           for pag_index in xrange(0, limit, 10000):
             results = ga_query(service, profile_id, pag_index,
                                        start_date, end_date, dims)
@@ -317,13 +317,13 @@ traverse_hierarchy(sys.argv)
 # Select the GA profile view to extract data
 selection_list = [0]
 i = 1
-print ('%5s %20s %5s %20s' % ("Item#", "Profile ID", " ", "Profile Name"))
+print ('%5s %20s %5s %20s' % ("Item#", "View ID", " ", "View Name"))
 for profile in sorted(profile_ids):
   selection_list = selection_list + [profile_ids[profile]]
   print ('%4s %20s %5s %20s' % (i, profile_ids[profile], " ", profile))
   i +=1
 
-print 'Enter the item# of the profile you would like to upload: ',
+print 'Enter the item# of the view you would like to ingest into MapD: ',
 item = int(raw_input())
 if item == '' or item <= 0 or item >= len(selection_list):
   print('Invalid selection - %s' % item)
@@ -350,13 +350,13 @@ if server_info == '':
   skip_mapd_connect = True
 else:
   (mapd_host, db_login, db_password, database, ssh_login) = [t(s) for t,s in zip((str, str, str, str, str), server_info.split())]
-  print('The output CSV file will be automatically uploaded to %s server into %s database' % (mapd_host, database))
+  print('The data from the selected view will be automatically uploaded to the %s database in the %s server' % (database, mapd_host))
   skip_mapd_connect = False
 print ""
 
 for profile in sorted(profile_ids):
   if (selection_list[item] == profile_ids[profile]):
-    print ('\nGoing to download data for %s(%s) ...' % (profile, profile_ids[profile]))
+    print ('\nGoing to download data for %s (%s) ...' % (profile, profile_ids[profile]))
     table_name = profile.lower()
     table_name = '%s' % (table_name.replace(' ', ''))    
     final_csv_file = './data/%s.csv' % (table_name)    
@@ -373,8 +373,8 @@ if skip_mapd_connect == True:
   sys.exit(0)
 connect_to_mapd(db_login, db_password, mapd_host, database)
 
-# Drop previous table
-drop_table_mapd(table_name)
+# No need to drop table as we will be concatenating the records if the table already exists.
+# drop_table_mapd(table_name)
 
 # Load data into MapD table
 load_to_mapd(table_name, final_csv_file, mapd_host, ssh_login)
