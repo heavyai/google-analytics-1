@@ -44,4 +44,5 @@ def load_to_mapd(table_name, csv_file, mapd_host, mapd_user):
   print query
   connection.execute(query)
   print connection.get_table_details(table_name)
+  connection.close()
 

@@ -360,6 +360,7 @@ for profile in sorted(profile_ids):
     table_name = profile.lower()
     table_name = '%s' % (table_name.replace(' ', ''))    
     final_csv_file = './data/%s.csv' % (table_name)    
+    final_csv_gzfile = './data/%s.csv.gz' % (table_name)    
     main(sys.argv)
     # Merge the tables for the different dimensions.
     merge_tables()
@@ -368,7 +369,7 @@ print "Download of analytics data done."
 # Connect to MapD
 if skip_mapd_connect == True:
   print "======================================================================="
-  print 'Goto MapD Immerse UI and import the CSV file %s' % (final_csv_file)
+  print 'Goto MapD Immerse UI and import the CSV file %s' % (final_csv_gzfile)
   print "======================================================================="
   sys.exit(0)
 connect_to_mapd(db_login, db_password, mapd_host, database)
@@ -376,8 +377,16 @@ connect_to_mapd(db_login, db_password, mapd_host, database)
 # No need to drop table as we will be concatenating the records if the table already exists.
 # drop_table_mapd(table_name)
 
+# Gzip the CSV file
+import gzip
+import shutil
+if os.path.isfile(final_csv_gzfile):
+  os.remove(final_csv_gzfile)
+with open(final_csv_file, 'rb') as f_in, gzip.open(final_csv_gzfile, 'wb') as f_out:
+    shutil.copyfileobj(f_in, f_out)
+
 # Load data into MapD table
-load_to_mapd(table_name, final_csv_file, mapd_host, ssh_login)
+load_to_mapd(table_name, final_csv_gzfile, mapd_host, ssh_login)
 print "======================================================================="
 print 'Goto MapD Immerse UI @ http://%s:9092/' % (mapd_host)
 print "======================================================================="
